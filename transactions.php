@@ -14,7 +14,7 @@ return (object)[
 
     // M-Pesa Daraja (fill with your credentials)
     'mpesa' => (object)[
-        'consumer_key' => 'YOUR_CONSUMER_KEY',
+        'consumer_key' => 'CONSUMER_KEY',
         'consumer_secret' => 'YOUR_CONSUMER_SECRET',
         'short_code' => '174379', // or your paybill/shortcode
         'passkey' => 'YOUR_PASSKEY',
