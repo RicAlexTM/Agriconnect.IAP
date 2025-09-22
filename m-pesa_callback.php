@@ -21,7 +21,7 @@ try {
 
     // Daraja expects HTTP 200; content doesn't matter much.
     http_response_code(200);
-    echo json_encode(['received' => true, 'ok' => (bool)$ok]);
+    echo json_encode(['Received' => true, 'ok' => (bool)$ok]);
 
 } catch (Throwable $e) {
     http_response_code(500);
