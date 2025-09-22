@@ -39,7 +39,7 @@ $name = $_SESSION['name'];
         <h2>Buyer Dashboard</h2>
         <ul>
             <li><a href="buyers.php">My Profile And Bids</a></li>
-            <li><a href="listings.php">Browse Listings</a></li>
+            <li><a href="listings.php">Browse The Listings</a></li>
         </ul>
     <?php else: ?>
         <h2>Admin Dashboard</h2>
