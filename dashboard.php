@@ -38,7 +38,7 @@ $name = $_SESSION['name'];
     <?php elseif ($role === 'buyer'): ?>
         <h2>Buyer Dashboard</h2>
         <ul>
-            <li><a href="buyers.php">My Profile & Bids</a></li>
+            <li><a href="buyers.php">My Profile And Bids</a></li>
             <li><a href="listings.php">Browse Listings</a></li>
         </ul>
     <?php else: ?>
