@@ -104,23 +104,86 @@ class AuthController {
     $db = new \App\Config\Database();
     $conn = $db->connect();
 
-    $stmt = $conn->prepare("SELECT * FROM users WHERE email = ?");
+    $stmt = $this->conn->prepare("SELECT * FROM users WHERE email = ?");
     $stmt->execute([$email]);
-    $user = $stmt->fetch();
+    $user = $stmt->fetch(PDO::FETCH_ASSOC);
 
     if (!$user || !password_verify($password, $user['password'])) {
-        return 'invalid';
+        return ["success"=>false,"msg"=>"❌ Invalid email or password."];
     }
 
     if ($user['is_verified'] == 0) {
-        return 'not_verified';
+        return ["success"=>false,"msg"=>"⚠️ Your account is not verified. Check your email for the verification link."];
     }
 
-    return [
+    return ["success" => true, "data" => [
         'id' => $user['id'],
         'name' => $user['name'],
         'role' => $user['role']
-    ];
+    ]];
 }
 
+    public function requestPasswordReset($email){
+        $stmt = $this->conn->prepare("SELECT * FROM users WHERE email=?");
+        $stmt->execute([$email]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if(!$user) {
+            return ["success"=>false,"msg"=>"Email not found."];
+        }
+
+        $token = bin2hex(random_bytes(16));
+        $expiresAt = date('Y-m-d H:i:s', strtotime('+15 minutes'));
+
+        // Save token to DB
+        $stmt = $this->conn->prepare("UPDATE users SET reset_token=?, reset_expires_at=? WHERE email=?");
+        $stmt->execute([$token,$expiresAt,$email]);
+
+        // Send reset email
+        $mail = new \App\Config\MailService();
+        $resetLink = rtrim($_ENV['APP_URL'], '/') . "/views/auth/reset_password.php?token=".$token;
+
+        $body = "
+            <h3>Password Reset Request</h3>
+            <p>Hi {$user['name']},</p>
+            <p>You recently requested to reset your password. Click the link below to proceed:</p>
+            <a href='$resetLink'>$resetLink</a>
+            <p>This link will expire in 15 minutes.</p>
+            <p>If you did not request this, please ignore this email.</p>
+            ";
+
+        if ($mail->send($email, "AgriMarket Password Reset", $body)) {
+            return ["success"=>true,"msg"=>"Password reset email sent."];
+        }
+
+        return ["success"=>false,"msg"=>"Failed to send password reset email."];
+    }
+
+    // Reset password
+    public function resetPassword($token, $newPassword) {
+        $stmt = $this->conn->prepare("SELECT * FROM users WHERE reset_token=? LIMIT 1");
+        $stmt->execute([$token]);
+        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if (!$user) {
+            return ["success"=>false,"msg"=>"Invalid or expired token."];
+        }
+
+        if (strtotime($user['reset_expires_at']) < time()) {
+            return ["success"=>false,"msg"=>"Password reset token has expired."];
+        }
+
+        $hashed = password_hash($newPassword, PASSWORD_BCRYPT);
+        $stmt->execute([$hashed, $user['id']]);
+        return ["success"=>true,"msg"=>"Password has been reset successfully."];
+    }
+
+    // Logout
+    public function logout() {
+        session_start();
+        session_unset();
+        session_destroy();
+
+    return ["success"=>true,"msg"=>"Logged out successfully."];
+    }
 }
