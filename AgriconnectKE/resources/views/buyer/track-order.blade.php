@@ -327,3 +327,160 @@
     let driverMarker;
     let deliveryMarker;
     let routeLine;
+        
+    function initMap() {
+        // Initialize map centered between driver and delivery location
+        const driverLat = {{ $driverLocation->latitude }};
+        const driverLng = {{ $driverLocation->longitude }};
+        const deliveryLat = {{ $order->delivery_lat }};
+        const deliveryLng = {{ $order->delivery_lng }};
+        
+        const centerLat = (driverLat + deliveryLat) / 2;
+        const centerLng = (driverLng + deliveryLng) / 2;
+        
+        map = L.map('map').setView([centerLat, centerLng], 12);
+        
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 18
+        }).addTo(map);
+        
+        // Add driver location marker
+        const driverIcon = L.divIcon({
+            html: '<div style="background-color: #dc3545; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>',
+            className: 'driver-marker',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
+        
+        driverMarker = L.marker([driverLat, driverLng], { icon: driverIcon })
+            .addTo(map)
+            .bindPopup(`
+                <div>
+                    <strong>Driver Location</strong><br>
+                    {{ $order->driver->name }}<br>
+                    <small>Last updated: {{ $driverLocation->location_updated_at->diffForHumans() }}</small>
+                </div>
+            `);
+        
+        // Add delivery location marker
+        const deliveryIcon = L.divIcon({
+            html: '<div style="background-color: #198754; width: 20px; height: 20px; border-radius: 50%; border: 3px solid white; box-shadow: 0 2px 6px rgba(0,0,0,0.3);"></div>',
+            className: 'delivery-marker',
+            iconSize: [20, 20],
+            iconAnchor: [10, 10]
+        });
+        
+        deliveryMarker = L.marker([deliveryLat, deliveryLng], { icon: deliveryIcon })
+            .addTo(map)
+            .bindPopup(`
+                <div>
+                    <strong>Delivery Location</strong><br>
+                    {{ $order->delivery_address }}<br>
+                    <small>Your address</small>
+                </div>
+            `)
+            .openPopup();
+        
+        // Add route line
+        routeLine = L.polyline([
+            [driverLat, driverLng],
+            [deliveryLat, deliveryLng]
+        ], {
+            color: '#0d6efd',
+            weight: 4,
+            opacity: 0.7,
+            dashArray: '10, 10'
+        }).addTo(map);
+        
+        // Calculate initial distance and ETA
+        updateDistanceAndETA();
+        
+        // Fit map to show both markers
+        const group = new L.featureGroup([driverMarker, deliveryMarker]);
+        map.fitBounds(group.getBounds().pad(0.1));
+    }
+
+    function updateDistanceAndETA() {
+        const distance = driverMarker.getLatLng().distanceTo(deliveryMarker.getLatLng()) / 1000; // Convert to km
+        document.getElementById('distance').textContent = `${distance.toFixed(1)} km remaining`;
+
+        // Estimate ETA (assuming average speed of 40 km/h)
+        const etaMinutes = (distance / 40) * 60;
+        document.getElementById('eta').textContent = `${Math.round(etaMinutes)} minutes`;
+    }
+
+    function refreshDriverLocation() {
+        fetch('/driver/location/current?driver_id={{ $order->driver_id }}')
+            .then(response => response.json())
+            .then(data => {
+                if (data.success && data.latitude && data.longitude) {
+                    const newLatLng = [data.latitude, data.longitude];
+                    driverMarker.setLatLng(newLatLng);
+                    
+                    // Update route line
+                    routeLine.setLatLngs([
+                        newLatLng,
+                        [{{ $order->delivery_lat }}, {{ $order->delivery_lng }}]
+                    ]);
+                    
+                    // Update distance and ETA
+                    updateDistanceAndETA();
+
+                    // Show notification
+                    showNotification('Location updated successfully!', 'success');
+                } else {
+                    console.warn('Driver location not available:', data.error);
+                    showNotification('Driver location not available', 'warning');
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching driver location:', error);
+                showNotification('Failed to update driver location', 'error');
+            });
+    }
+
+    function showNotification(message, type) {
+        const alertClass = type === 'success' ? 'alert-success' : 
+                          type === 'warning' ? 'alert-warning' : 'alert-danger';
+        const icon = type === 'success' ? 'fa-check-circle' : 
+                    type === 'warning' ? 'fa-exclamation-triangle' : 'fa-exclamation-circle';
+        
+        const notification = document.createElement('div');
+        notification.className = `alert ${alertClass} alert-dismissible fade show position-fixed`;
+        notification.style.top = '20px';
+        notification.style.right = '20px';
+        notification.style.zIndex = '9999';
+        notification.style.minWidth = '300px';
+        notification.innerHTML = `
+            <i class="fas ${icon} me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        `;
+        
+        document.body.appendChild(notification);
+        
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        initMap();
+        
+        // Refresh location button
+        const refreshBtn = document.getElementById('refreshLocation');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', refreshDriverLocation);
+        }
+        
+        // Auto-refresh every 30 seconds if order is shipped
+        @if($order->status == 'shipped')
+        setInterval(refreshDriverLocation, 30000);
+        @endif
+    });
+</script>
+@endif
+@endpush
