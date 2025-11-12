@@ -148,3 +148,68 @@
     // Driver marker and real-time updates
     let driverMarker;
     let deliveryRoute;
+        
+    function updateDriverLocation() {
+        fetch(`/api/driver-location/{{ $order->driver_id }}`)
+            .then(response => response.json())
+            .then(data => {
+                const driverLocation = L.latLng([data.latitude, data.longitude]);
+
+                if (driverMarker) {
+                    driverMarker.setLatLng(driverLocation);
+                } else {
+                    driverMarker = L.marker(driverLocation, {
+                        icon: L.divIcon({
+                            className: 'driver-marker',
+                            html: '🚚'
+                        })
+                    }).addTo(map);
+                }
+
+                // Update route
+                if (!deliveryRoute) {
+                    deliveryRoute = L.polyline([driverLocation, deliveryPoint], {
+                        color: 'blue',
+                        weight: 3
+                    }).addTo(map);
+                } else {
+                    deliveryRoute.setLatLngs([driverLocation, deliveryPoint]);
+                }
+
+                // Update distance and ETA
+                const distance = driverLocation.distanceTo(deliveryPoint) / 1000; // Convert to km
+                document.getElementById('distance').textContent = 
+                    `${distance.toFixed(1)} km remaining`;
+
+                // Estimate ETA (assuming average speed of 40 km/h)
+                const etaMinutes = (distance / 40) * 60;
+                document.getElementById('eta').textContent = 
+                    `${Math.round(etaMinutes)} minutes`;
+
+                // Fit bounds
+                const bounds = L.latLngBounds([
+                    driverLocation,
+                    pickupPoint,
+                    deliveryPoint
+                ]);
+                map.fitBounds(bounds);
+            });
+    }
+
+    // Update driver location every 30 seconds
+    updateDriverLocation();
+    setInterval(updateDriverLocation, 30000);
+    @else
+    // If no driver assigned yet, just show the route between pickup and delivery
+    L.polyline([pickupPoint, deliveryPoint], {
+        color: 'gray',
+        weight: 3,
+        dashArray: '5, 10'
+    }).addTo(map);
+
+    // Fit bounds to show both points
+    const bounds = L.latLngBounds([pickupPoint, deliveryPoint]);
+    map.fitBounds(bounds);
+    @endif
+</script>
+@endsection
