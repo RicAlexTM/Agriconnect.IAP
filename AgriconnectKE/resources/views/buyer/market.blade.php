@@ -676,3 +676,16 @@ function showToast(type, message) {
         }
     });
 }
+// Debug function to test cart functionality
+function testCartSetup() {
+    console.log('=== Cart Setup Test ===');
+    console.log('CSRF Token:', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')?.substring(0, 20) + '...');
+    console.log('Add to Cart buttons found:', document.querySelectorAll('[id^="addToCartBtn"]').length);
+    console.log('Cart count element:', document.getElementById('cartCount'));
+    console.log('=== End Test ===');
+}
+
+// Run test on load
+document.addEventListener('DOMContentLoaded', testCartSetup);
+</script>
+@endpush
