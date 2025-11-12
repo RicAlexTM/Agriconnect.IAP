@@ -3,183 +3,185 @@
 @section('title', 'Checkout - AgriconnectKE')
 
 @section('content')
-<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-    <h1 class="h2">Checkout</h1>
-    <a href="{{ route('buyer.cart') }}" class="btn btn-secondary">
-        <i class="fas fa-arrow-left"></i> Back to Cart
-    </a>
-</div>
-
-@if(session('error'))
-    <div class="alert alert-danger alert-dismissible fade show" role="alert">
-        {{ session('error') }}
-        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-@endif
-
-<div class="row">
-    <!-- Order Summary -->
-    <div class="col-md-8">
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">Order Summary</h5>
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-10">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-1">Checkout</h1>
+                    <p class="text-muted mb-0">Complete your purchase</p>
+                </div>
+                <a href="{{ route('buyer.market') }}" class="btn btn-outline-secondary">
+                    <i class="fas fa-arrow-left me-2"></i>Back to Market
+                </a>
             </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>Product</th>
-                                <th>Price</th>
-                                <th>Quantity</th>
-                                <th>Subtotal</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($cartItems as $cartItem)
-                            <tr>
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        @if($cartItem['product']->image)
-                                            <img src="{{ asset('storage/' . $cartItem['product']->image) }}" 
-                                                 alt="{{ $cartItem['product']->name }}" 
-                                                 class="img-thumbnail me-3" 
-                                                 style="width: 60px; height: 60px; object-fit: cover;">
-                                        @else
-                                            <div class="bg-light rounded d-flex align-items-center justify-content-center me-3" 
-                                                 style="width: 60px; height: 60px;">
-                                                <i class="fas fa-image text-muted"></i>
-                                            </div>
-                                        @endif
-                                        <div>
-                                            <h6 class="mb-1">{{ $cartItem['product']->name }}</h6>
-                                            <small class="text-muted">by {{ $cartItem['product']->farmer->name }}</small>
+
+            @if(session('success'))
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    <i class="fas fa-check-circle me-2"></i>
+                    {{ session('success') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+
+            @if(session('error'))
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    <i class="fas fa-exclamation-circle me-2"></i>
+                    {{ session('error') }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+            @endif
+
+            <div class="row">
+                <!-- Order Summary -->
+                <div class="col-lg-8">
+                    <div class="card border-0 shadow-sm mb-4">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Order Summary</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center">
+                                <div class="col-auto">
+                                    @if($order->product->image)
+                                        <img src="{{ asset('storage/' . $order->product->image) }}" 
+                                             alt="{{ $order->product->name }}" 
+                                             class="rounded" 
+                                             style="width: 80px; height: 80px; object-fit: cover;">
+                                    @else
+                                        <div class="bg-light rounded d-flex align-items-center justify-content-center" 
+                                             style="width: 80px; height: 80px;">
+                                            <i class="fas fa-image text-muted"></i>
                                         </div>
+                                    @endif
+                                </div>
+                                <div class="col">
+                                    <h6 class="mb-1">{{ $order->product->name }}</h6>
+                                    <p class="text-muted small mb-1">by {{ $order->product->farmer->name }}</p>
+                                    <p class="text-muted small mb-0">Category: {{ ucfirst($order->product->category) }}</p>
+                                </div>
+                                <div class="col-auto text-end">
+                                    <div class="h5 text-success mb-1">Ksh {{ number_format($order->product->price, 2) }}</div>
+                                    <small class="text-muted">per unit</small>
+                                </div>
+                            </div>
+                            <hr>
+                            <div class="row">
+                                <div class="col-6">
+                                    <strong>Quantity:</strong> {{ $order->quantity }}
+                                </div>
+                                <div class="col-6 text-end">
+                                    <strong>Subtotal:</strong> Ksh {{ number_format($order->product->price * $order->quantity, 2) }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Delivery Information -->
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-header bg-light">
+                            <h5 class="mb-0">Delivery Information</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>Delivery Address:</strong><br>
+                                        {{ $order->delivery_address }}
+                                    </p>
+                                    <p><strong>Contact Phone:</strong><br>
+                                        {{ Auth::user()->phone }}
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="alert alert-info">
+                                        <h6><i class="fas fa-info-circle"></i> Delivery Note</h6>
+                                        <p class="mb-0 small">
+                                            The product will be delivered directly from the farmer. 
+                                            Delivery time may vary based on your location.
+                                        </p>
                                     </div>
-                                </td>
-                                <td class="align-middle">
-                                    Ksh {{ number_format($cartItem['product']->price, 2) }}
-                                </td>
-                                <td class="align-middle">
-                                    {{ $cartItem['quantity'] }}
-                                </td>
-                                <td class="align-middle">
-                                    <strong class="text-success">
-                                        Ksh {{ number_format($cartItem['item_total'], 2) }}
-                                    </strong>
-                                </td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Pricing Summary -->
-                <div class="row mt-4">
-                    <div class="col-md-6 offset-md-6">
-                        <div class="border-top pt-3">
-                            <div class="d-flex justify-content-between mb-2">
-                                <span>Subtotal:</span>
-                                <span>Ksh {{ number_format($subtotal, 2) }}</span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-2">
-                                <span>Delivery Cost:</span>
-                                <span>Ksh {{ number_format($deliveryCost, 2) }}</span>
-                            </div>
-                            <div class="d-flex justify-content-between mb-2 fs-5 fw-bold text-success">
-                                <span>Total:</span>
-                                <span>Ksh {{ number_format($total, 2) }}</span>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-        
-        <!-- Delivery Information -->
-        <div class="card mb-4">
-            <div class="card-header">
-                <h5 class="mb-0">Delivery Information</h5>
-            </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-6">
-                        <p><strong>Delivery Address:</strong><br>
-                            {{ Auth::user()->address }}
-                        </p>
-                        <p><strong>Contact Phone:</strong><br>
-                            {{ Auth::user()->phone }}
-                        </p>
+
+                <!-- Payment Section -->
+                <div class="col-lg-4">
+                    <div class="card border-0 shadow-sm sticky-top" style="top: 20px;">
+                        <div class="card-header bg-success text-white">
+                            <h5 class="mb-0">Complete Payment</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="alert alert-info border-0">
+                                <h6><i class="fas fa-mobile-alt me-2"></i>M-Pesa Payment</h6>
+                                <p class="mb-0 small">Complete your purchase using M-Pesa</p>
+                            </div>
+                            
+                            <!-- Pricing Breakdown -->
+                            <div class="mb-4">
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Product Subtotal:</span>
+                                    <span>Ksh {{ number_format($order->product->price * $order->quantity, 2) }}</span>
+                                </div>
+                                <div class="d-flex justify-content-between mb-2">
+                                    <span>Delivery Cost:</span>
+                                    <span>Ksh {{ number_format($order->delivery_cost, 2) }}</span>
+                                </div>
+                                <hr>
+                                <div class="d-flex justify-content-between mb-2 fs-5 fw-bold text-success">
+                                    <span>Total Amount:</span>
+                                    <span>Ksh {{ number_format($order->amount, 2) }}</span>
+                                </div>
+                            </div>
+                            
+                            <form method="POST" action="{{ route('buyer.payment', $order) }}">
+                                @csrf
+                                <div class="mb-3">
+                                    <label for="phone" class="form-label fw-medium">M-Pesa Phone Number</label>
+                                    <input type="text" class="form-control" id="phone" name="phone" 
+                                           value="{{ Auth::user()->phone }}" required 
+                                           placeholder="e.g., 254712345678">
+                                    <div class="form-text">Enter your M-Pesa registered phone number</div>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" id="terms" name="terms" required>
+                                        <label class="form-check-label" for="terms">
+                                            I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">terms and conditions</a>
+                                        </label>
+                                    </div>
+                                </div>
+                                
+                                <div class="d-grid">
+                                    <button type="submit" class="btn btn-success btn-lg py-3">
+                                        <i class="fas fa-credit-card me-2"></i>
+                                        Pay Ksh {{ number_format($order->amount, 2) }}
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div class="mt-3 text-center">
+                                <small class="text-muted">
+                                    <i class="fas fa-lock me-1"></i> Secure payment processing
+                                </small>
+                            </div>
+                        </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="alert alert-info">
-                            <h6><i class="fas fa-info-circle"></i> Delivery Note</h6>
-                            <p class="mb-0 small">
-                                Products will be delivered from different farmers. 
-                                Each product may arrive separately based on the farmer's location and available drivers.
-                            </p>
+
+                    <!-- Farmer Information -->
+                    <div class="card border-0 shadow-sm mt-4">
+                        <div class="card-header bg-light">
+                            <h6 class="mb-0">Farmer Information</h6>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-2"><strong>Name:</strong> {{ $order->farmer->name }}</p>
+                            <p class="mb-2"><strong>Phone:</strong> {{ $order->farmer->phone }}</p>
+                            <p class="mb-0"><strong>Location:</strong> {{ $order->farmer->address }}</p>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Payment Section -->
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="mb-0">Payment Method</h5>
-            </div>
-            <div class="card-body">
-                <div class="alert alert-info">
-                    <h6><i class="fas fa-mobile-alt"></i> M-Pesa Payment</h6>
-                    <p class="mb-2">Complete your purchase using M-Pesa</p>
-                </div>
-                
-                <form method="POST" action="{{ route('buyer.checkout.process') }}">
-                    @csrf
-                    <div class="mb-3">
-                        <label for="phone" class="form-label">M-Pesa Phone Number</label>
-                        <input type="text" class="form-control" id="phone" name="phone" 
-                               value="{{ Auth::user()->phone }}" required placeholder="e.g., 254712345678">
-                        <div class="form-text">Enter your M-Pesa registered phone number</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="terms" name="terms" required>
-                            <label class="form-check-label" for="terms">
-                                I agree to the <a href="#" data-bs-toggle="modal" data-bs-target="#termsModal">terms and conditions</a>
-                            </label>
-                        </div>
-                    </div>
-                    
-                    <div class="d-grid">
-                        <button type="submit" class="btn btn-success btn-lg">
-                            <i class="fas fa-credit-card"></i> Pay Ksh {{ number_format($total, 2) }}
-                        </button>
-                    </div>
-                </form>
-
-                <div class="mt-3 text-center">
-                    <small class="text-muted">
-                        <i class="fas fa-lock"></i> Your payment is secure and encrypted
-                    </small>
-                </div>
-            </div>
-        </div>
-
-  <!-- Order Help -->
-        <div class="card mt-4">
-            <div class="card-body">
-                <h6>Need Help?</h6>
-                <p class="small text-muted mb-2">
-                    <i class="fas fa-phone"></i> Call: 0700 000000
-                </p>
-                <p class="small text-muted mb-0">
-                    <i class="fas fa-envelope"></i> Email: support@agriconnectke.com
-                </p>
             </div>
         </div>
     </div>
@@ -206,8 +208,8 @@
                 <h6>Delivery Terms</h6>
                 <ul>
                     <li>Delivery times may vary based on location</li>
-                    <li>Multiple products may arrive separately</li>
-                    <li>You will receive tracking information for each delivery</li>
+                    <li>You will receive tracking information for your delivery</li>
+                    <li>Please ensure someone is available to receive the delivery</li>
                 </ul>
             </div>
             <div class="modal-footer">
@@ -217,3 +219,24 @@
     </div>
 </div>
 @endsection
+
+@push('styles')
+<style>
+    .card {
+        border-radius: 12px;
+    }
+    
+    .btn {
+        border-radius: 8px;
+    }
+    
+    .form-control {
+        border-radius: 8px;
+    }
+    
+    .sticky-top {
+        position: sticky;
+        z-index: 100;
+    }
+</style>
+@endpush
