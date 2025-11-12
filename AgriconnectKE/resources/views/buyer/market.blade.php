@@ -409,3 +409,270 @@
 <script>
     document.addEventListener('DOMContentLoaded', function() {
     console.log('Marketplace loaded successfully');
+
+      // Price calculation for purchase modals
+    @foreach($products as $product)
+    const quantityInput{{ $product->id }} = document.getElementById('quantity{{ $product->id }}');
+    const quantityDisplay{{ $product->id }} = document.getElementById('quantityDisplay{{ $product->id }}');
+    const totalPrice{{ $product->id }} = document.getElementById('totalPrice{{ $product->id }}');
+    const purchaseForm{{ $product->id }} = document.getElementById('purchaseForm{{ $product->id }}');
+    const purchaseBtn{{ $product->id }} = document.getElementById('purchaseBtn{{ $product->id }}');
+    
+    if (quantityInput{{ $product->id }} && totalPrice{{ $product->id }}) {
+        quantityInput{{ $product->id }}.addEventListener('input', function() {
+            const quantity = parseInt(this.value) || 0;
+            const price = {{ $product->price }};
+            const subtotal = quantity * price;
+            
+            if (quantityDisplay{{ $product->id }}) {
+                quantityDisplay{{ $product->id }}.textContent = quantity;
+            }
+            
+            totalPrice{{ $product->id }}.textContent = subtotal.toLocaleString('en-KE', {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            });
+        });
+    }
+
+    if (purchaseForm{{ $product->id }}) {
+        purchaseForm{{ $product->id }}.addEventListener('submit', function(e) {
+            if (purchaseBtn{{ $product->id }}) {
+                purchaseBtn{{ $product->id }}.disabled = true;
+                purchaseBtn{{ $product->id }}.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Processing...';
+            }
+        });
+    }
+    @endforeach
+
+    // Search and filter functionality
+    const searchInput = document.getElementById('searchInput');
+    const categoryFilter = document.getElementById('categoryFilter');
+    const productItems = document.querySelectorAll('.product-item');
+
+    function filterProducts() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const category = categoryFilter.value;
+
+        productItems.forEach(item => {
+            const name = item.dataset.name;
+            const itemCategory = item.dataset.category;
+            const matchesSearch = name.includes(searchTerm);
+            const matchesCategory = !category || itemCategory === category;
+
+            item.style.display = (matchesSearch && matchesCategory) ? 'block' : 'none';
+        });
+    }
+
+    if (searchInput && categoryFilter) {
+        searchInput.addEventListener('input', filterProducts);
+        categoryFilter.addEventListener('change', filterProducts);
+    }
+
+    // Reset modal states when closed
+    @foreach($products as $product)
+    const purchaseModal{{ $product->id }} = document.getElementById('purchaseModal{{ $product->id }}');
+    if (purchaseModal{{ $product->id }}) {
+        purchaseModal{{ $product->id }}.addEventListener('hidden.bs.modal', function () {
+            const purchaseBtn = document.getElementById('purchaseBtn{{ $product->id }}');
+            if (purchaseBtn) {
+                purchaseBtn.disabled = false;
+                purchaseBtn.innerHTML = '<i class="fas fa-credit-card me-1"></i>Proceed to Checkout';
+            }
+        });
+    }
+    @endforeach
+});
+
+// Enhanced addToCart function with better error handling
+function addToCart(productId, quantity = 1) {
+    console.log('Adding product to cart:', productId);
+    
+    const addButton = document.getElementById(`addToCartBtn${productId}`);
+    
+    if (!addButton) {
+        console.error('Add to cart button not found for product:', productId);
+        showToast('error', 'Unable to add product to cart');
+        return;
+    }
+    
+    const originalText = addButton.innerHTML;
+    const originalClasses = addButton.className;
+    
+    // Show loading state
+    addButton.disabled = true;
+    addButton.innerHTML = '<i class="fas fa-spinner fa-spin me-1"></i>Adding...';
+    addButton.className = originalClasses.replace('btn-outline-primary', 'btn-secondary');
+    
+    // Get CSRF token
+    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}';
+    
+    fetch(`/buyer/cart/add/${productId}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify({ 
+            quantity: quantity,
+            _token: csrfToken
+        })
+    })
+    .then(response => {
+        console.log('Response status:', response.status);
+        
+        if (!response.ok) {
+            if (response.status === 401) {
+                throw new Error('Please log in to add items to cart');
+            } else if (response.status === 403) {
+                throw new Error('Access denied. Buyer account required.');
+            } else if (response.status === 404) {
+                throw new Error('Product not found');
+            } else if (response.status === 422) {
+                return response.json().then(data => {
+                    const errorMessage = data.errors ? Object.values(data.errors).flat().join(', ') : data.message;
+                    throw new Error(errorMessage || 'Validation error');
+                });
+            } else {
+                throw new Error(`Server error: ${response.status}`);
+            }
+        }
+        return response.json();
+    })
+    .then(data => {
+        console.log('Add to cart response:', data);
+        
+        if (data.success) {
+            showToast('success', data.message || 'Product added to cart successfully!');
+            updateCartCount(data.cart_count);
+            
+            // Update button to show success state
+            addButton.innerHTML = '<i class="fas fa-check me-1"></i>Added!';
+            addButton.className = originalClasses.replace('btn-outline-primary', 'btn-success');
+            
+            // Reset button after 2 seconds
+            setTimeout(() => {
+                addButton.disabled = false;
+                addButton.innerHTML = originalText;
+                addButton.className = originalClasses;
+            }, 2000);
+            
+        } else {
+            throw new Error(data.error || data.message || 'Failed to add product to cart');
+        }
+    })
+    .catch(error => {
+        console.error('Add to cart error:', error);
+        
+        let errorMessage = error.message || 'Failed to add product to cart';
+        
+        // Handle specific error cases
+        if (errorMessage.includes('log in')) {
+            showToast('warning', 'Please log in to add items to cart');
+            // Redirect to login after 2 seconds
+            setTimeout(() => {
+                window.location.href = '{{ route("login") }}';
+            }, 2000);
+        } else if (errorMessage.includes('Buyer account')) {
+            showToast('error', 'You need a buyer account to add items to cart');
+        } else {
+            showToast('error', errorMessage);
+        }
+        
+        // Reset button state
+        addButton.disabled = false;
+        addButton.innerHTML = originalText;
+        addButton.className = originalClasses;
+    });
+}
+
+// Enhanced updateCartCount function
+function updateCartCount(count) {
+    console.log('Updating cart count:', count);
+    
+    // Update navbar cart count
+    const cartCountElement = document.getElementById('cartCount');
+    if (cartCountElement) {
+        cartCountElement.textContent = count;
+        
+        if (count > 0) {
+            cartCountElement.classList.remove('d-none');
+            // Add animation
+            cartCountElement.classList.add('pulse-animation');
+            setTimeout(() => {
+                cartCountElement.classList.remove('pulse-animation');
+            }, 500);
+        } else {
+            cartCountElement.classList.add('d-none');
+        }
+    } else {
+        console.warn('Cart count element not found');
+    }
+    
+    // Update mobile cart count if exists
+    const mobileCartCount = document.getElementById('mobileCartCount');
+    if (mobileCartCount) {
+        mobileCartCount.textContent = count;
+        if (count > 0) {
+            mobileCartCount.classList.remove('d-none');
+        } else {
+            mobileCartCount.classList.add('d-none');
+        }
+    }
+}
+
+// Enhanced toast notification
+function showToast(type, message) {
+    console.log('Showing toast:', type, message);
+    
+    // Remove existing toasts
+    const existingToasts = document.querySelectorAll('.custom-toast');
+    existingToasts.forEach(toast => {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    });
+    
+    const toast = document.createElement('div');
+    toast.className = `custom-toast alert alert-${type} alert-dismissible fade show position-fixed`;
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.style.minWidth = '300px';
+    toast.style.maxWidth = '400px';
+    toast.style.borderRadius = '8px';
+    toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    toast.style.border = 'none';
+    
+    const icon = type === 'success' ? 'fa-check-circle' : 
+                type === 'error' ? 'fa-exclamation-triangle' : 
+                type === 'warning' ? 'fa-exclamation-circle' : 'fa-info-circle';
+    
+    const textColor = type === 'warning' ? 'text-dark' : 'text-white';
+    
+    toast.innerHTML = `
+        <div class="d-flex align-items-center">
+            <i class="fas ${icon} me-2 fs-5 ${textColor}"></i>
+            <div class="flex-grow-1 ${textColor}">${message}</div>
+            <button type="button" class="btn-close ${type === 'warning' ? 'btn-close-dark' : 'btn-close-white'}" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    }, 5000);
+    
+    // Add click to dismiss
+    toast.addEventListener('click', function() {
+        if (toast.parentNode) {
+            toast.remove();
+        }
+    });
+}
